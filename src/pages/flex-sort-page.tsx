@@ -57,6 +57,7 @@ export const FlexSortPage = () => {
           }
         }}
       />
+      <div>TEXT TEST</div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import classnames from "classnames";
-import { Dispatch, DragEventHandler, ElementRef, Fragment, ReactNode, SetStateAction, useCallback, useRef, useState } from "react";
+import { Dispatch, DragEventHandler, ElementRef, Fragment, ReactNode, SetStateAction, TouchEventHandler, useCallback, useEffect, useRef, useState } from "react";
 import { isPointInTriangle } from "./is-point-in-triangle";
 
 enum E_DROP_POSITION {
@@ -67,7 +67,8 @@ export const SortableFlex = <T extends {id: string}>({
     }
   }
 
-  const dragEndHandler: DragEventHandler = () => {
+  const dragEndHandler: DragEventHandler = (event) => {
+    event.preventDefault()
     if (dragData && dropData && dragData.item.id !== dropData.itemId) {
       setItems(prev => {
         const filteredItems = prev.filter(item => item.id !== dragData.item.id);
@@ -119,6 +120,7 @@ export const SortableFlex = <T extends {id: string}>({
   }
 
   const itemsContainerDragLeaveHandler: DragEventHandler = (event) => {
+    event.preventDefault();
     if (!dragData || !event.relatedTarget || event.currentTarget.contains(event.relatedTarget as Node)) {
       return
     }
@@ -127,6 +129,96 @@ export const SortableFlex = <T extends {id: string}>({
       position: E_DROP_POSITION.prev
     })
   }
+
+  // Touch support
+  const touchStartHandler: TouchEventHandler = (event) => {
+    const elementId = event.currentTarget.getAttribute("data-id");
+    const dragStartItem = items.find(item => item.id === elementId);
+
+    if (dragStartItem) {
+      const boundingClientRect = event.currentTarget.getBoundingClientRect();
+
+      setTimeout(() => {
+        setDragData({ 
+          item: dragStartItem, 
+          elementWidth: boundingClientRect.width, 
+         });
+        setDropData({
+          itemId: dragStartItem.id,
+          position: E_DROP_POSITION.prev
+        })
+      })
+    }
+  }
+
+  useEffect(() => {
+    const touchMoveHandler = (event: TouchEvent) => {
+      if (dragData && itemsContainerRef.current) {
+        const element = document.elementFromPoint(event.touches[0].clientX, event.touches[0].clientY);
+        const elementWithDataId = element?.closest("[data-id]");
+        const dragOverItem = items.find(item => item.id === elementWithDataId?.getAttribute("data-id"));
+        if (elementWithDataId && dragOverItem) {
+          const boundingClientRect = elementWithDataId.getBoundingClientRect();
+          const position = isPointInTriangle(
+            { x: event.touches[0].clientX, y: event.touches[0].clientY }, 
+            { x: boundingClientRect.x, y: boundingClientRect.y },
+            { x: boundingClientRect.x + boundingClientRect.width, y: boundingClientRect.y },
+            { x: boundingClientRect.x, y: boundingClientRect.y + boundingClientRect.height }
+          ) ? E_DROP_POSITION.prev : E_DROP_POSITION.next;
+          setDropDataWithCheck({
+            itemId: dragOverItem.id,
+            position
+          })
+        }
+      }
+    }
+
+    addEventListener("touchmove", touchMoveHandler);
+    return () => removeEventListener("touchmove", touchMoveHandler);
+  }, [dragData, setDropDataWithCheck, items, setDragData])
+
+  useEffect(() => {
+    const touchEndHandler = (event: TouchEvent) => {
+      if (dragData && dropData && itemsContainerRef.current && dragData.item.id !== dropData.itemId) {
+        const element = document.elementFromPoint(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+        if (itemsContainerRef.current === element || itemsContainerRef.current.contains(element)) {
+          setItems(prev => {
+            const filteredItems = prev.filter(item => item.id !== dragData.item.id);
+            const insertIdx = filteredItems.findIndex(item => item.id === dropData.itemId);
+            if (insertIdx !== -1) {
+              filteredItems.splice(insertIdx + (dropData.position === 'next' ? 1 : 0), 0, dragData.item)
+            }
+            return filteredItems
+          })
+        }
+      }
+      setDragData(undefined);
+      setDropData(undefined);
+    }
+
+    addEventListener("touchend", touchEndHandler);
+    addEventListener("touchcancel", touchEndHandler);
+    return () => {
+      removeEventListener("touchend", touchEndHandler);
+      removeEventListener("touchcancel", touchEndHandler);
+    }
+  }, [dragData, dropData, setItems])
+
+  useEffect(() => {
+    if (dragData) {
+      const contextMenuHandler = (event: MouseEvent) => {
+        event.preventDefault();
+      }
+
+      const currentUserSelect = document.body.style.userSelect
+      document.body.style.userSelect = 'none';
+      addEventListener("contextmenu", contextMenuHandler);
+      return () => {
+        removeEventListener("contextmenu", contextMenuHandler);
+        document.body.style.userSelect = currentUserSelect || 'auto';
+      }
+    }
+  }, [dragData])
 
   const itemElements = items.map(item => (
     <Fragment key={item.id}>
@@ -142,6 +234,7 @@ export const SortableFlex = <T extends {id: string}>({
         onDragStart={dragStartHandler}
         onDragEnd={dragEndHandler}
         onDragOver={dragOverHandler}
+        onTouchStart={touchStartHandler}
       >
         {itemNodeFactory(item)}
       </div>
