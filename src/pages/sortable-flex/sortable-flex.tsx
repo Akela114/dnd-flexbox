@@ -144,7 +144,6 @@ export const SortableFlex = <T extends {id: string}>({
         onDragStart={dragStartHandler}
         onDragEnd={dragEndHandler}
         onDragOver={dragOverHandler}
-        // onTouchStart={touchStartHandler}
       >
         {itemNodeFactory(item)}
       </div>

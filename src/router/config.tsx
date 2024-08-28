@@ -3,7 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 
 export const router = createBrowserRouter([
   {
-    path: "/dnd-flexbox",
+    path: import.meta.env.MODE === "development" ? "/" : "/dnd-flexbox",
     element: <FlexSortPage />
   }
 ])
