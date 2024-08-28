@@ -21,22 +21,10 @@ const draggableElementsData = [
 ]
 
 export const FlexSortPage = () => {
-  const [items, setItems] = useState(draggableElementsData)
   const [items2, setItems2] = useState(draggableElementsData)
 
   return (
     <div className="p-10 flex flex-col items-center gap-20">
-      <SortableFlex
-        classNames={{
-          dropzone: {
-            always: "gap-2"
-          }
-        }}
-        items={items}
-        setItems={setItems}
-        itemNodeFactory={element => <img src={`/images/animals/${element.id}.jpg`} alt={element.id} className="size-20 object-cover" />}
-        draggingItemNodeFactory={element => <img src={`/images/animals/${element.id}.jpg`} alt={element.id} className="grayscale size-20 object-cover" />}
-      />
       <SortableFlex
         items={items2}
         setItems={setItems2}
